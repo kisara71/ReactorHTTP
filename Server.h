@@ -10,11 +10,12 @@ public:
 
 private:
     bool initListenFd(uint16_t port);
-
+    bool acceptClient();
     void epollRun();
 private:
     int m_lfd;
     int m_epfd;
+    bool m_stop;
 
 };
 
