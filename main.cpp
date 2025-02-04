@@ -5,5 +5,7 @@
 int main(){
 
     Logger::get_instance()->open("./Logger/test.log");
+    debug("test1");
+    info("test22");
     return 0;
 }
