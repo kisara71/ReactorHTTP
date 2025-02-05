@@ -1,10 +1,11 @@
 #include "Server.h"
 #include <iostream>
-#include "Logger/Logger.h"
+#include "../Logger/Logger.h"
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-
+#include <string>
+#include <unistd.h>
 
 bool Server::initListenFd(uint16_t port){
     //监听fd
@@ -72,11 +73,12 @@ void Server::epollRun(){
         }
         int num = epoll_wait(m_epfd, evs, size, 200);
         for(int i=0;i<num;++i){
-            int curfd = evs[i].data.fd;
+            int curfd = evs[i].data.fd;  //获取当前文件描述符
             if(curfd == m_lfd){
+                // 处理新的连接
                 acceptClient();
             }else{
-
+                recvHTTPRequest(curfd);
             }
         }
 
@@ -109,4 +111,53 @@ bool Server::acceptClient(){
     }
     info("accepted a client");
     return true;
+}
+
+
+
+bool Server::recvHTTPRequest(int curfd){
+    std::string requestMSG;
+    requestMSG.reserve(4096);
+    char temp[1024];
+
+    int len=0;
+    while(true){
+        len = recv(curfd, temp, sizeof(temp), 0);
+        if(len > 0){
+            //正常接收数据
+            requestMSG.append(temp, len);
+
+        }else if(0 == len){
+            //client 断开连接
+            epoll_ctl(m_epfd, EPOLL_CTL_DEL, curfd, nullptr);
+            close(curfd);
+            return false;
+
+        }else if (-1 == len){
+            if(errno == EAGAIN){
+                //数据接收完毕
+                break;
+            }else if( errno == EINTR){
+                //意外中断
+                continue;
+            }else{
+                error("recv http request failed: %s", strerror(errno));
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+Server::Server(){
+
+}
+
+void Server::initServer(uint16_t port){
+    if(!initListenFd(port)){
+        fatal("init server failed");
+        exit(-1);
+    }
+    info("server inited");
 }

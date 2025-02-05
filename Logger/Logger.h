@@ -22,7 +22,7 @@ public:
 
     
     void log(Level level, const char *filename, int line, const char *format, ...);
-    void log_init(const std::string& filename, Level level, int maxBytes=0);
+    void log_init(Level level,const std::string filename="log.log", int maxBytes=0);
     void open(const std::string& filename);
 
 

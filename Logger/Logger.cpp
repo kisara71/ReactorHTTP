@@ -37,7 +37,7 @@ void Logger::close(){
 }
 Logger::Logger():m_len(0)
 {
-    log_init("autoCreated.log", DEBUG, 0);
+    log_init(DEBUG);
 }
 Logger::~Logger(){
     close();
@@ -91,7 +91,7 @@ void Logger::rotate(){
     open(m_filename);
 
 }
-void Logger::log_init(const std::string& filename, Level level, int maxBytes){
+void Logger::log_init(Level level,const std::string filename, int maxBytes){
     open(filename);
     set_level(level);
     m_max = maxBytes;

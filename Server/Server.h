@@ -6,11 +6,13 @@
 
 class Server{
 public:
-    void initServer();
+    Server();
+    void initServer(uint16_t port);
 
 private:
     bool initListenFd(uint16_t port);
     bool acceptClient();
+    bool recvHTTPRequest(int curfd);
     void epollRun();
 private:
     int m_lfd;

@@ -1,11 +1,13 @@
-#include "Server.h"
+#include "Server/Server.h"
 #include <stdio.h>
 #include "Logger/Logger.h"
+#include "Config/Config.h"
+int main(int argc, char* argv[]){
 
-int main(){
-
-    Logger::get_instance()->open("./Logger/test.log");
-    debug("test1");
-    info("test22");
+   Server ser;
+   Config config;
+   config.parse_config(argc, argv);
+   Logger::get_instance()->log_init(config.logLevel);
+   ser.initServer(config.port);
     return 0;
 }
