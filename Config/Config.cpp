@@ -4,12 +4,11 @@
 Config::Config(){
     port = 55655;
     logLevel = Logger::DEBUG;
-    root = "/home/kisara";
 }
 
 void Config::parse_config(int argc, char* argv[]){
     int opt;
-    const char* optStr = "p:l:";
+    const char* optStr = "p:l:d:";
     std::string msg;
     while((opt = getopt(argc, argv, optStr))!=-1){
         switch(opt){
@@ -35,6 +34,9 @@ void Config::parse_config(int argc, char* argv[]){
                 }else{
                     break;
                 }
+            case 'a':
+                chdir(optarg);
+                break;
             default:
                 break;
         }

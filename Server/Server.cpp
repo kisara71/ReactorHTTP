@@ -117,6 +117,7 @@ bool Server::acceptClient(){
 
 
 Server::Server(){
+    m_stop = false;
 }
 
 void Server::initServer(uint16_t port){

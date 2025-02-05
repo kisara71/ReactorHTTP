@@ -11,7 +11,6 @@ public:
 public:
     unsigned short port;
     Logger::Level logLevel;
-    std::string root;
 
 };
 

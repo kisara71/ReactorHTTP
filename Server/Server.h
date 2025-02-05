@@ -1,6 +1,5 @@
 #ifndef SERVER_H
 #define SERVER_H
-class HTTPRequest;
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include "../HTTPRequest/HTTPRequest.h"
@@ -17,7 +16,6 @@ private:
     int m_lfd;
     int m_epfd;
     bool m_stop;
-
     HTTPRequest http;
 
 };

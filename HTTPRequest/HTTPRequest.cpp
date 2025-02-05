@@ -6,7 +6,9 @@
 #include <unistd.h>
 #include <string.h>
 #include "../Logger/Logger.h"
-
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/sendfile.h>
 bool HTTPRequest::recvHTTPRequest(int curfd)
 {
     std::string requestMSG;
@@ -52,13 +54,38 @@ bool HTTPRequest::recvHTTPRequest(int curfd)
     return true;
 }
 
-void HTTPRequest::parseHTTPRequest(const char* request){
+bool HTTPRequest::parseHTTPRequest(int curfd, const char* request){
     httpINFO temp;
     sscanf(request, "%[^ ] %[^ ]", temp.method, temp.requestLine);
+    
+    if(strcmp(temp.method, "GET") == 0){
+        const char* file = nullptr;
+        if(strcmp(temp.requestLine, "/") == 0){
+            file = "./";
+        }else{
+            file = temp.requestLine+1;
+        }
+        struct stat st;
+        int ret = stat(file, &st);
+        if(-1 == ret){
+            // 返回404
+            sendHTTPHead(curfd, HTTPRequest::HTTP_NOTFOUND, getFileType("404.html").c_str(), "Not Found");
+            sendHTTPFile(curfd, "404.html");
+            warn("file not found: %s", file);
+            return false;
+        }
+        if(S_ISDIR(st.st_mode)){
+            //发送目录
+        }else{
+            //发送文件
+            sendHTTPHead(curfd, HTTPRequest::HTTP_OK, getFileType(file).c_str(), "OK", st.st_size);
+            sendHTTPFile(curfd, file);
+        }
+    }
+    return true;
 }
 void HTTPRequest::init(int epfd){
     m_epfd = epfd;
-
     info("http inited");
 }
 
@@ -68,4 +95,48 @@ HTTPRequest::HTTPRequest(){
 
 HTTPRequest::~HTTPRequest(){
 
+}
+bool HTTPRequest::sendHTTPFile(int curfd, const char* filename){
+
+    int file = open(filename, O_RDONLY);
+    if(-1 == file){
+        error("open file failed: %s", strerror(errno));
+        return false;
+    }
+    int size = lseek(file, 0, SEEK_END);
+    sendfile(curfd, file, nullptr, size);
+    close(file);
+    return true;
+}
+
+bool HTTPRequest::sendHTTPHead(int curfd, HTTPRequest::HTTPStatus status, const char* type, const char* msg, int size){
+    char head[1024];
+    sprintf(head, "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", status, msg, type, size);
+    send(curfd, head, strlen(head), 0);
+    return true;
+}
+
+std::string HTTPRequest::getFileType(const std::string& filename){
+    std::string::size_type idx = filename.rfind('.');
+    if(idx == std::string::npos){
+        return "text/plain";
+    }
+    std::string type = filename.substr(idx+1);
+    if(type == "html" || type == "htm"){
+        return "text/html";
+    }else if(type == "jpg" || type == "jpeg"){
+        return "image/jpeg";
+    }else if(type == "png"){
+        return "image/png";
+    }else if(type == "gif"){
+        return "image/gif";
+    }else if(type == "css"){
+        return "text/css";
+    }else if(type == "js"){
+        return "application/x-javascript";
+    }else if(type == "ico"){
+        return "image/x-icon";
+    }else{
+        return "text/plain";
+    }
 }
