@@ -1,9 +1,9 @@
 #ifndef SERVER_H
 #define SERVER_H
-
+class HTTPRequest;
 #include <arpa/inet.h>
 #include <sys/epoll.h>
-
+#include "../HTTPRequest/HTTPRequest.h"
 class Server{
 public:
     Server();
@@ -12,12 +12,13 @@ public:
 private:
     bool initListenFd(uint16_t port);
     bool acceptClient();
-    bool recvHTTPRequest(int curfd);
     void epollRun();
 private:
     int m_lfd;
     int m_epfd;
     bool m_stop;
+
+    HTTPRequest http;
 
 };
 

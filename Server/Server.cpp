@@ -51,6 +51,8 @@ void Server::epollRun(){
         fatal("run epoll failed: %s", strerror(errno));
         exit(-1);
     }
+    http.init(m_epfd);
+
 
     int ret = 0;
     //将监听fd挂到epoll树上
@@ -78,7 +80,7 @@ void Server::epollRun(){
                 // 处理新的连接
                 acceptClient();
             }else{
-                recvHTTPRequest(curfd);
+                http.recvHTTPRequest(curfd);
             }
         }
 
@@ -114,44 +116,7 @@ bool Server::acceptClient(){
 }
 
 
-
-bool Server::recvHTTPRequest(int curfd){
-    std::string requestMSG;
-    requestMSG.reserve(4096);
-    char temp[1024];
-
-    int len=0;
-    while(true){
-        len = recv(curfd, temp, sizeof(temp), 0);
-        if(len > 0){
-            //正常接收数据
-            requestMSG.append(temp, len);
-
-        }else if(0 == len){
-            //client 断开连接
-            epoll_ctl(m_epfd, EPOLL_CTL_DEL, curfd, nullptr);
-            close(curfd);
-            return false;
-
-        }else if (-1 == len){
-            if(errno == EAGAIN){
-                //数据接收完毕
-                break;
-            }else if( errno == EINTR){
-                //意外中断
-                continue;
-            }else{
-                error("recv http request failed: %s", strerror(errno));
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
 Server::Server(){
-
 }
 
 void Server::initServer(uint16_t port){
