@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include <dirent.h>
 bool HTTPRequest::recvHTTPRequest(int curfd)
 {
     std::string requestMSG;
@@ -50,14 +51,15 @@ bool HTTPRequest::recvHTTPRequest(int curfd)
             }
         }
     }
-
+    info("get a request: %s", requestMSG.c_str());
+    parseHTTPRequest(curfd, requestMSG.c_str());
     return true;
 }
 
-bool HTTPRequest::parseHTTPRequest(int curfd, const char* request){
+bool HTTPRequest::  parseHTTPRequest(int curfd, const char* request){
     httpINFO temp;
     sscanf(request, "%[^ ] %[^ ]", temp.method, temp.requestLine);
-    
+    info("request line:\n %s", temp.requestLine);
     if(strcmp(temp.method, "GET") == 0){
         const char* file = nullptr;
         if(strcmp(temp.requestLine, "/") == 0){
@@ -76,6 +78,8 @@ bool HTTPRequest::parseHTTPRequest(int curfd, const char* request){
         }
         if(S_ISDIR(st.st_mode)){
             //发送目录
+            sendHTTPHead(curfd, HTTPRequest::HTTP_OK, getFileType("dir.html").c_str(), "OK");
+            sendHTTPDir(curfd, file);
         }else{
             //发送文件
             sendHTTPHead(curfd, HTTPRequest::HTTP_OK, getFileType(file).c_str(), "OK", st.st_size);
@@ -103,15 +107,17 @@ bool HTTPRequest::sendHTTPFile(int curfd, const char* filename){
         error("open file failed: %s", strerror(errno));
         return false;
     }
-    int size = lseek(file, 0, SEEK_END);
-    sendfile(curfd, file, nullptr, size);
+    struct stat st;
+    stat(filename, &st);
+    info("send size is: %d", st.st_size);
+    sendfile(curfd, file, nullptr, st.st_size);
     close(file);
     return true;
 }
 
 bool HTTPRequest::sendHTTPHead(int curfd, HTTPRequest::HTTPStatus status, const char* type, const char* msg, int size){
     char head[1024];
-    sprintf(head, "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", status, msg, type, size);
+    sprintf(head, "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", static_cast<int>(status), msg, type, size);
     send(curfd, head, strlen(head), 0);
     return true;
 }
@@ -139,4 +145,34 @@ std::string HTTPRequest::getFileType(const std::string& filename){
     }else{
         return "text/plain";
     }
+}
+
+bool HTTPRequest::sendHTTPDir(int curfd, const char* dirName){
+    struct dirent** fileList;
+    char toSendBuf[4096] = {0};
+    sprintf(toSendBuf, "<html><head><title></title></head><body><table>");
+    int ret = scandir(dirName, &fileList, nullptr, alphasort);
+    for (int i = 0; i<ret; ++i){
+        char* name = fileList[i]->d_name;
+        struct stat st;
+        char pathName[512];
+        sprintf(pathName, "%s/%s", dirName, name);
+        stat(pathName, &st);
+        if(S_ISDIR(st.st_mode)){
+            sprintf(toSendBuf+strlen(toSendBuf),
+             "<tr><td><a href=\"%s/\">%s</a></td><td>%ld</td></tr>", 
+             name,  name, st.st_size);
+        }else{
+            sprintf(toSendBuf + strlen(toSendBuf), 
+            "<tr><td><a href=\"%s\">%s</a></td><td>%ld</td></tr>",
+             name, name, st.st_size);
+        }
+        send(curfd, toSendBuf, sizeof(toSendBuf), 0);
+        delete fileList[i];
+        memset(toSendBuf, 0, sizeof(toSendBuf));
+    }
+    sprintf(toSendBuf, "</table></body></html>");
+    send(curfd, toSendBuf, sizeof(toSendBuf), 0);
+    delete [] fileList;
+    return true;
 }

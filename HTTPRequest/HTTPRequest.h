@@ -26,6 +26,7 @@ public:
     bool parseHTTPRequest(int curfd, const char* request);
     bool sendHTTPFile(int curfd, const char* filename);
     bool sendHTTPHead(int curfd, HTTPStatus status, const char* type, const char* msg, int size=-1);
+    bool sendHTTPDir(int curfd, const char* dirName);
     std::string getFileType(const std::string& filename);
 private:
     int m_epfd;

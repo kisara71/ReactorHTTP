@@ -3,10 +3,14 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include "../HTTPRequest/HTTPRequest.h"
+#include <thread>
+#include <atomic>
 class Server{
 public:
     Server();
+    ~Server();
     void initServer(uint16_t port);
+    std::thread test;
 
 private:
     bool initListenFd(uint16_t port);
@@ -15,7 +19,7 @@ private:
 private:
     int m_lfd;
     int m_epfd;
-    bool m_stop;
+    std::atomic<bool> m_stop;
     HTTPRequest http;
 
 };

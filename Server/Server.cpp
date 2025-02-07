@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
+#include <thread>
 
 bool Server::initListenFd(uint16_t port){
     //监听fd
@@ -90,7 +91,7 @@ void Server::epollRun(){
 
 bool Server::acceptClient(){
     // 与客户端建立连接
-    int client = accept(m_epfd, nullptr, nullptr);
+    int client = accept(m_lfd, nullptr, nullptr);
     if(-1==client){
         error("invalid client: %s", strerror(errno));
         return false;
@@ -117,7 +118,7 @@ bool Server::acceptClient(){
 
 
 Server::Server(){
-    m_stop = false;
+    m_stop.store(false);
 }
 
 void Server::initServer(uint16_t port){
@@ -126,4 +127,13 @@ void Server::initServer(uint16_t port){
         exit(-1);
     }
     info("server inited");
+    test = std::thread(&Server::epollRun, this);
+}
+
+Server::~Server(){
+    m_stop.store(true);
+    if(test.joinable())
+    {
+        test.join();
+    }
 }
