@@ -23,6 +23,7 @@ Logger* Logger::get_instance(){
 
 void Logger::open(const std::string& filename){
     close();
+    info("filename is %s", filename);
     m_filename = filename;
     m_fout.open(filename, std::ios::app);
     if(m_fout.fail()){
@@ -37,7 +38,7 @@ void Logger::close(){
 }
 Logger::Logger():m_len(0)
 {
-    log_init(DEBUG);
+    set_level(INFO);
 }
 Logger::~Logger(){
     close();
@@ -92,7 +93,8 @@ void Logger::rotate(){
 
 }
 void Logger::log_init(Level level,const std::string filename, int maxBytes){
-    open(filename);
+    this->open(filename);
     set_level(level);
     m_max = maxBytes;
+    info("log system inited, log level: %s", s_level[level]);
 }

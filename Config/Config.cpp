@@ -34,8 +34,11 @@ void Config::parse_config(int argc, char* argv[]){
                 }else{
                     break;
                 }
-            case 'a':
+            case 'd':
                 chdir(optarg);
+                char buf[512];
+                getcwd(buf, sizeof(buf));
+                debug("current work dir is: %s", buf);
                 break;
             default:
                 break;

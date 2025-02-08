@@ -10,6 +10,28 @@
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <dirent.h>
+
+int hexToDec(char c){
+    if(c >= '0' && c<= '9'){
+        return c - '0';
+    }else if(c >= 'a' && c<='f'){
+        return c - 'a' + 10;
+    }else if (c >= 'A' && c <= 'F'){
+        return c - 'A' + 10;
+    }
+    return 0;
+}
+
+void decodeUtf8(char* to, char* from){
+    for(; *from != '\0'; ++to, ++from){
+        if(from[0] == '%' && isxdigit(from[1]) && isxdigit(from[2])){
+            *to = hexToDec(from[1]) * 16 + hexToDec(from[2]);
+            from += 2;
+        }else {
+            *to = *from;
+        }
+    }
+}
 bool HTTPRequest::recvHTTPRequest(int curfd)
 {
     std::string requestMSG;
@@ -51,7 +73,7 @@ bool HTTPRequest::recvHTTPRequest(int curfd)
             }
         }
     }
-    info("get a request: %s", requestMSG.c_str());
+    debug("get a request: %s", requestMSG.c_str());
     parseHTTPRequest(curfd, requestMSG.c_str());
     return true;
 }
@@ -59,13 +81,15 @@ bool HTTPRequest::recvHTTPRequest(int curfd)
 bool HTTPRequest::  parseHTTPRequest(int curfd, const char* request){
     httpINFO temp;
     sscanf(request, "%[^ ] %[^ ]", temp.method, temp.requestLine);
-    info("request line:\n %s", temp.requestLine);
+    char decodedFilename[sizeof(temp.requestLine) + 1] = {0};
+    decodeUtf8(decodedFilename,temp.requestLine);
+    debug("request line: %s", decodedFilename);
     if(strcmp(temp.method, "GET") == 0){
         const char* file = nullptr;
-        if(strcmp(temp.requestLine, "/") == 0){
+        if(strcmp(decodedFilename, "/") == 0){
             file = "./";
         }else{
-            file = temp.requestLine+1;
+            file = decodedFilename+1;
         }
         struct stat st;
         int ret = stat(file, &st);
@@ -80,10 +104,12 @@ bool HTTPRequest::  parseHTTPRequest(int curfd, const char* request){
             //发送目录
             sendHTTPHead(curfd, HTTPRequest::HTTP_OK, getFileType("dir.html").c_str(), "OK");
             sendHTTPDir(curfd, file);
+            info("send dir %s", file);
         }else{
             //发送文件
             sendHTTPHead(curfd, HTTPRequest::HTTP_OK, getFileType(file).c_str(), "OK", st.st_size);
             sendHTTPFile(curfd, file);
+            info("send file %s", file);
         }
     }
     return true;
@@ -101,23 +127,25 @@ HTTPRequest::~HTTPRequest(){
 
 }
 bool HTTPRequest::sendHTTPFile(int curfd, const char* filename){
-
     int file = open(filename, O_RDONLY);
     if(-1 == file){
-        error("open file failed: %s", strerror(errno));
+        warn("open file failed: %s", strerror(errno));
         return false;
     }
     struct stat st;
     stat(filename, &st);
-    info("send size is: %d", st.st_size);
-    sendfile(curfd, file, nullptr, st.st_size);
+    debug("send size is: %d", st.st_size);
+    off_t offset = 0;
+    while(offset<st.st_size){
+        sendfile(curfd, file, &offset, st.st_size - offset);
+    }
     close(file);
     return true;
 }
 
 bool HTTPRequest::sendHTTPHead(int curfd, HTTPRequest::HTTPStatus status, const char* type, const char* msg, int size){
     char head[1024];
-    sprintf(head, "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", static_cast<int>(status), msg, type, size);
+    sprintf(head, "HTTP/1.1 %d %s\r\nContent-Type: %s; charset=UTF-8\r\nContent-Length: %d\r\n\r\n", static_cast<int>(status), msg, type, size);
     send(curfd, head, strlen(head), 0);
     return true;
 }

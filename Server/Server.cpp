@@ -93,7 +93,7 @@ bool Server::acceptClient(){
     // 与客户端建立连接
     int client = accept(m_lfd, nullptr, nullptr);
     if(-1==client){
-        error("invalid client: %s", strerror(errno));
+        warn("invalid client: %s", strerror(errno));
         return false;
     }
     // 设置client非阻塞
