@@ -2,7 +2,7 @@ CXX = g++
 
 CXXFLAGS = -g -Wall
 
-SRCS = main.cpp Server/Server.cpp Logger/Logger.cpp Config/Config.cpp HTTPRequest/HTTPRequest.cpp
+SRCS = main.cpp Server/Server.cpp Logger/Logger.cpp Config/Config.cpp HTTPRequest/HTTPRequest.cpp Channel/Channel.cpp
 ASSEMBLY = $(SRCS:.cpp=.s)
 OBJS = $(ASSEMBLY:.s=.o)
 
