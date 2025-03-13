@@ -15,7 +15,12 @@ void Channel::setWriteEvent(bool flag){
         m_events &= (~WRITEEVENT);
     }
 }
-
-bool Channel::hasWriteEvent(){
-    return ((m_events & WRITEEVENT) != 0);
+void Channel::setReadEvent(bool flag){
+    if(flag){
+       m_events |= READEVENT;
+    }else{
+        m_events &= (~READEVENT);
+    }
 }
+
+
