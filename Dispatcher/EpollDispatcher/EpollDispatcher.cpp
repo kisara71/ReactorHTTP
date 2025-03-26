@@ -2,9 +2,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include "EpollDispatcher.h"
+#include <iostream>
 #define DEFAULT_COUNTS 1024
 
-EpollDispatcher::EpollDispatcher()
+EpollDispatcher::EpollDispatcher(std::unordered_map<int, Channel>& map)
+:Dispatcher(map)
 {
     m_events = new epoll_event[DEFAULT_COUNTS];
 
@@ -17,7 +19,11 @@ EpollDispatcher::EpollDispatcher()
 
 EpollDispatcher::~EpollDispatcher()
 {
-    delete [] m_events;
+    debug("destroy a epoll dispatcher");
+    if(m_events != nullptr)
+    {
+        delete [] m_events;
+    }
     close(m_epfd);
 }
 bool EpollDispatcher::epollctl(Channel& channel, int opt)
@@ -28,11 +34,11 @@ bool EpollDispatcher::epollctl(Channel& channel, int opt)
     ev.data.fd = channel.m_fd;
     if(channel.m_events & WRITEEVENT)
     {
-        ev.events |= EPOLLIN;
+        ev.events |= EPOLLOUT;
     }
     if(channel.m_events & READEVENT)
     {
-        ev.events |= EPOLLOUT;
+        ev.events |= EPOLLIN;
     }
 
     int ret = epoll_ctl(m_epfd, opt, channel.m_fd, &ev);
@@ -47,6 +53,7 @@ bool EpollDispatcher::add(Channel& channel)
         error("epoll dispatcher add failed :%s", strerror(errno));
         return false;
     }
+    channelMap[channel.m_fd] = std::move(channel);
     debug("epoll dispatcher add success");
     return true;
 }
@@ -59,6 +66,8 @@ bool EpollDispatcher::remove(Channel& channel)
         error("epoll dispatcher delete failed :%s", strerror(errno));
         return false;
     }
+    channel.setUseless(true);
+    channelMap.erase(channel.m_fd);
     debug("epoll dispatcher delete success");
     return true;
 }
@@ -75,26 +84,48 @@ bool EpollDispatcher::modify(Channel& channel)
     return true;
 }
 
-bool EpollDispatcher::dispatch(Channel& channel, int timeout)
+void EpollDispatcher::dispatch(int timeout)
 {
     int count = epoll_wait(m_epfd, m_events, DEFAULT_COUNTS, timeout * 1000);
     for(int i = 0; i < count; ++i)
     {
         int events = m_events[i].events;
         int curfd = m_events[i].data.fd;
+        Channel& curChannel = channelMap[curfd];
         if(events & EPOLLERR || events & EPOLLHUP)
         {
-            remove(channel);
-            debug("current event is err or hup");
+           remove(curChannel);
         }
         if(events & EPOLLIN)
         {
-
+            if(curChannel.readCallBack)
+            {
+                debug("read call back ");
+                curChannel.readCallBack();
+            }else{
+                warn("unbind readCallBack");
+            }
         }
         if(events & EPOLLOUT)
         {
-
+            if(curChannel.writeCallBack)
+            {
+                curChannel.writeCallBack();
+                debug("write call back");
+            }else{
+                warn("unbind writeCallBack");
+            }
         }
     }
 }
 
+bool EpollDispatcher::clear()
+{
+    if(m_events != nullptr)
+    {
+        delete [] m_events;
+        return true;
+    }
+    channelMap.clear();
+    return false;
+}

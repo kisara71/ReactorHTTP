@@ -9,14 +9,15 @@
 class EpollDispatcher : public Dispatcher
 {
 public:
-    EpollDispatcher();
+    EpollDispatcher(std::unordered_map<int, Channel>& map);
     ~EpollDispatcher();
 public:
     bool epollctl(Channel& channel, int opt);
     bool add(Channel& channel) override;
     bool remove(Channel& channel) override;
     bool modify(Channel& channel) override;
-    bool dispatch(Channel& channel, int timeout) override;
+    void dispatch(int timeout) override;
+    bool clear() override;
 private:
     int m_epfd;
     epoll_event* m_events;
