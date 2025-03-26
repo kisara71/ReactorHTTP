@@ -1,23 +1,44 @@
-CXX = g++
+CC = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -pthread -g
 
-CXXFLAGS = -g -Wall
+# 文件夹路径
+OBJ_DIR = obj
+BIN_DIR = bin
+SRC_DIR = src
 
-SRCS = main.cpp Server/Server.cpp Logger/Logger.cpp Config/Config.cpp HTTPRequest/HTTPRequest.cpp Channel/Channel.cpp
-ASSEMBLY = $(SRCS:.cpp=.s)
-OBJS = $(ASSEMBLY:.s=.o)
+# 源文件
+SRCS = $(wildcard Channel/*.cpp) \
+       $(wildcard Config/*.cpp) \
+       $(wildcard Dispatcher/EpollDispatcher/*.cpp) \
+       $(wildcard Dispatcher/PollDispatcher/*.cpp) \
+       $(wildcard Dispatcher/SelectDispatcher/*.cpp) \
+       $(wildcard EventLoop/*.cpp) \
+       $(wildcard HTTPRequest/*.cpp) \
+       $(wildcard Logger/*.cpp) \
+       $(wildcard Server/*.cpp) \
+       $(wildcard ThreadPool/*.cpp) \
+       main.cpp \
 
-TARGET = server
+# 目标文件
+OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
+
+# 可执行文件
+TARGET = $(BIN_DIR)/server
+
+# 默认目标
+all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) -o $@ $^
+	@mkdir -p $(BIN_DIR)  # 确保 bin 文件夹存在
+	$(CC) $(CXXFLAGS) -o $@ $^
 
-%.s: %.cpp
-	$(CXX) -S $< $(CXXFLAGS)
+# 编译源文件到目标文件
+$(OBJ_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CC) $(CXXFLAGS) -c $< -o $@
 
-%.o: %.s
-	$(CXX) -c $< $(CXXFLAGS)
-
+# 清理目标
 clean:
-	rm -f $(OBJS) $(ASSEMBLY) $(TARGET)
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-.PHONY: clean
+.PHONY: all clean
