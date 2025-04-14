@@ -4,22 +4,29 @@
 
 #include <thread>
 #include <mutex>
-#include <unordered_map>
+#include <vector>
+#include <memory>
 
 #include "../EventLoop/EventLoop.h"
 class ThreadPool
 {
 
 public:
-    ThreadPool(int threadCount);
+    ThreadPool(int threadCount, DispatcherType type);
     ~ThreadPool();
 
-private:
-    void worker();
+public:
+    EventLoop* getEvLoop();
 
 private:
+    void worker(DispatcherType type);
+
+private:
+    int m_threadCount;
+    int m_index;
     std::mutex mtx;
-    std::unordered_map<std::thread::id, std::pair<std::thread, EventLoop*>> m_workers;
+    std::vector<EventLoop*> m_evLoops;
+    std::vector<std::thread> m_workers;
 };
 
 

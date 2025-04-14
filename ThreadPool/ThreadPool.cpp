@@ -1,38 +1,52 @@
 #include "ThreadPool.h"
-ThreadPool::ThreadPool(int threadCount)
+ThreadPool::ThreadPool(int threadCount, DispatcherType type):
+m_threadCount(threadCount),
+m_index(0)
 {
    { 
     std::unique_lock<std::mutex> lock(mtx);
-    for(int i = 1;i<=threadCount;++i)
+    for(int i = 1;i<=m_threadCount;++i)
     {
-        std::thread t(&ThreadPool::worker, this);
-        std::thread::id tid = t.get_id();
-        EventLoop* ev = new EventLoop(DispatcherType::EPOLL);
-        m_workers[tid] = std::make_pair(std::move(t), ev);
+        std::thread t(&ThreadPool::worker, this, type);
+        m_workers.emplace_back(std::move(t));
     }
     }
 }
 ThreadPool::~ThreadPool()
 {
-    for(auto it = m_workers.begin();it!=m_workers.end();++it)
+   for(auto& ev : m_evLoops)
+   {
+        ev->stop();
+   }
+   for(auto& t : m_workers)
+   {
+    if(t.joinable())
     {
-        it->second.second->stop();
-        if(it->second.first.joinable())
-        {
-            it->second.first.join();
-            
-        }
-        delete it->second.second;
+        t.join();
     }
+   }
+   for(auto it = m_evLoops.begin();it!=m_evLoops.end();++it)
+   {
+        delete *it;
+   }
 }
 
-  
-void ThreadPool::worker()
+EventLoop* ThreadPool::getEvLoop()
 {
-    EventLoop* ev;
+    if(0 < m_threadCount)
+    {
+        return m_evLoops[(m_index++)%m_threadCount];
+    }else{
+        return nullptr;
+    }
+}
+  
+void ThreadPool::worker(DispatcherType type)
+{
+    EventLoop* ev = new EventLoop(type);
     {
         std::unique_lock<std::mutex> lock (mtx);
-        ev = m_workers[std::this_thread::get_id()].second;
+        m_evLoops.emplace_back(ev);
     }
     ev->run();
 }
