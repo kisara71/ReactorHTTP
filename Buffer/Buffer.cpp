@@ -10,7 +10,7 @@ m_data(new char[capacity]),
 m_readPos(0),
 m_writePos(0),
 m_readable(0),
-m_writeable(0),
+m_writeable(capacity),
 m_capacity(capacity)
 {
 
@@ -21,7 +21,7 @@ Buffer::~Buffer() noexcept
 {
     if(m_data!=nullptr)
     {
-        delete m_data;
+        delete [] m_data;
     }
 }
 
@@ -54,18 +54,18 @@ void Buffer::write(const char* data) noexcept
 {
     int size = strlen(data);
     extenCapRoom(size);
-    memcpy(m_data, m_data + m_writePos, size);
+    memcpy(m_data + m_writePos, data, size);
     m_readable += size;
     m_writeable -= size;
     m_writePos += size;
     return;
 }
 
-bool Buffer::readFromFD(int fd)
+int Buffer::readFromFD(int fd)
 {
     iovec vec[2];
     vec[0].iov_base = m_data + m_writePos;
-    vec[1].iov_len = m_writeable;
+    vec[0].iov_len = m_writeable;
     char gourdBuf[10240];
     vec[1].iov_base = gourdBuf;
     vec[1].iov_len = 10240;
@@ -74,18 +74,18 @@ bool Buffer::readFromFD(int fd)
     if(-1 == ret)
     {
         error("read from fd: %d failed: %s", fd, strerror(errno));
-        return false;
+        return ret;
     }else if(ret <= m_writeable)
     {
         m_writeable -= ret;
         m_writePos += ret;
         debug("read from fd: %d with %d byte", fd, ret);
-        return true;
+        return ret;
     }else {
         m_writePos += ret;
         m_writeable -= ret;
         write(gourdBuf);
         debug(" write into buffer from gourdBuf");
-        return true;
+        return ret;
     }
 }

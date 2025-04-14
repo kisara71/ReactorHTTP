@@ -8,7 +8,7 @@ public:
     ~Buffer() noexcept;
 public:
     void write(const char* data) noexcept;
-    bool readFromFD(int fd);
+    int readFromFD(int fd);
 private:
     void extenCapRoom(int& size) noexcept;
 
