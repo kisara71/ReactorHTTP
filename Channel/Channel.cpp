@@ -1,22 +1,22 @@
 #include "Channel.h"
+#include "../TCPConnection/TCPConnection.h"
 #include <unistd.h>
 #include <iostream>
-Channel::Channel(uint8_t events):
-m_fd(-1), 
+
+Channel::Channel(int fd, uint8_t events, TCPConnection* conn, handleFunc readCallBack, handleFunc writeCallBack, handleFunc deleteCallBack):
+m_readCallBack(readCallBack),
+m_writeCallBack(writeCallBack),
+m_deleteCallBack(deleteCallBack),
+m_fd(fd), 
 m_events(events),
-USELESS(false)
+m_tcpCon(conn)
 {
 
 }
-void Channel::setUseless(bool flag)
-{
-    USELESS = flag;
-}
+
 Channel::~Channel(){
-    if(USELESS)
-    {
-        close(m_fd);
-    }
+
+    close(m_fd);
 }
 void Channel::setWriteEvent(bool flag){
     if(flag){
@@ -33,15 +33,8 @@ void Channel::setReadEvent(bool flag){
     }
 }
 
-void Channel::bindReadCallBack(std::function<bool(void)> func)
-{
-    readCallBack = std::move(func);
-    return;
-}
 
-void Channel::bindWriteCallBack(std::function<bool(void)> func)
+void Channel::defaultReadCallBack()
 {
-    writeCallBack = std::move(func);
-    return;
+    m_tcpCon->handleRead();
 }
-
