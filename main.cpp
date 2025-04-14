@@ -8,6 +8,13 @@
 #include <iostream>
 #include <fcntl.h>
 #include <string.h>
+#include "TCPServer/TCPServer.h"
+#include <thread>
+
+void test(TCPServer* ser)
+{
+   ser->run();
+}
 int main(int argc, char* argv[]){
 
    //Server ser;
@@ -17,8 +24,14 @@ int main(int argc, char* argv[]){
    //ser.initServer(config.port);
    //ThreadPool tp;
    {
-      ThreadPool(3);
+      TCPServer* server = new TCPServer(1,55655, DispatcherType::EPOLL);
+      std::thread t(test, server);
       getchar();
+      server->stop();
+      if(t.joinable())
+      {
+         t.join();
+      }
    }
    getchar();
    return 0;
