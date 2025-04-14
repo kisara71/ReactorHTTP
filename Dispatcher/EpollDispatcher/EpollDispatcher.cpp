@@ -5,7 +5,7 @@
 #include <iostream>
 #define DEFAULT_COUNTS 1024
 
-EpollDispatcher::EpollDispatcher(std::unordered_map<int, Channel>& map)
+EpollDispatcher::EpollDispatcher(std::unordered_map<int, Channel*>& map)
 :Dispatcher(map)
 {
     m_events = new epoll_event[DEFAULT_COUNTS];
@@ -26,26 +26,26 @@ EpollDispatcher::~EpollDispatcher()
     }
     close(m_epfd);
 }
-bool EpollDispatcher::epollctl(Channel& channel, int opt)
+bool EpollDispatcher::epollctl(Channel* channel, int opt)
 {
     
     epoll_event ev;
     ev.events = 0;
-    ev.data.fd = channel.m_fd;
-    if(channel.m_events & WRITEEVENT)
+    ev.data.fd = channel->m_fd;
+    if(channel->m_events & WRITEEVENT)
     {
         ev.events |= EPOLLOUT;
     }
-    if(channel.m_events & READEVENT)
+    if(channel->m_events & READEVENT)
     {
         ev.events |= EPOLLIN;
     }
 
-    int ret = epoll_ctl(m_epfd, opt, channel.m_fd, &ev);
+    int ret = epoll_ctl(m_epfd, opt, channel->m_fd, &ev);
     return (-1 != ret);
 }
 
-bool EpollDispatcher::add(Channel& channel)
+bool EpollDispatcher::add(Channel* channel)
 {
     bool ret = epollctl(channel, EPOLL_CTL_ADD);
     if(!ret)
@@ -53,12 +53,12 @@ bool EpollDispatcher::add(Channel& channel)
         error("epoll dispatcher add failed :%s", strerror(errno));
         return false;
     }
-    channelMap[channel.m_fd] = std::move(channel);
+    m_channelMap[channel->m_fd] = channel;
     debug("epoll dispatcher add success");
     return true;
 }
 
-bool EpollDispatcher::remove(Channel& channel)
+bool EpollDispatcher::remove(Channel* channel)
 {
     bool ret = epollctl(channel, EPOLL_CTL_DEL);
     if(!ret)
@@ -66,13 +66,14 @@ bool EpollDispatcher::remove(Channel& channel)
         error("epoll dispatcher delete failed :%s", strerror(errno));
         return false;
     }
-    channel.setUseless(true);
-    channelMap.erase(channel.m_fd);
+    int fd = channel->m_fd;
+    m_channelMap.erase(fd);
+    channel->m_deleteCallBack();
     debug("epoll dispatcher delete success");
     return true;
 }
 
-bool EpollDispatcher::modify(Channel& channel)
+bool EpollDispatcher::modify(Channel* channel)
 {
     bool ret = epollctl(channel, EPOLL_CTL_MOD);
     if(!ret)
@@ -91,26 +92,28 @@ void EpollDispatcher::dispatch(int timeout)
     {
         int events = m_events[i].events;
         int curfd = m_events[i].data.fd;
-        Channel& curChannel = channelMap[curfd];
+        Channel* curChannel = m_channelMap[curfd];
         if(events & EPOLLERR || events & EPOLLHUP)
         {
            remove(curChannel);
+           continue;
         }
         if(events & EPOLLIN)
         {
-            if(curChannel.readCallBack)
+            if(curChannel->m_readCallBack)
             {
                 debug("read call back ");
-                curChannel.readCallBack();
+                curChannel->m_readCallBack();
             }else{
-                warn("unbind readCallBack");
+                curChannel->defaultReadCallBack();
+                debug("default read call back");
             }
         }
         if(events & EPOLLOUT)
         {
-            if(curChannel.writeCallBack)
+            if(curChannel->m_writeCallBack)
             {
-                curChannel.writeCallBack();
+                curChannel->m_writeCallBack();
                 debug("write call back");
             }else{
                 warn("unbind writeCallBack");
@@ -126,6 +129,7 @@ bool EpollDispatcher::clear()
         delete [] m_events;
         return true;
     }
-    channelMap.clear();
+
+   
     return false;
 }
