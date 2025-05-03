@@ -57,6 +57,10 @@ m_port(port)
             ev->addTask(conn->m_channel, dispatcherOPT::REMOVE);
             ev->awakeDispatcher();
         });
+        conn->bindModifyWrite([ev, conn](){
+            ev->addTask(conn->m_channel, dispatcherOPT::MODIFY);
+            ev->awakeDispatcher();
+        });
         ev->addTask(conn->m_channel, dispatcherOPT::ADD);
 
         ev->awakeDispatcher();
