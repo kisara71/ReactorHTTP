@@ -4,6 +4,12 @@
 Config::Config(){
     port = 55655;
     logLevel = Logger::DEBUG;
+    chdir("/home/kisara/Projects/ReactorHTTP/root");
+    char buf[512];
+    getcwd(buf, sizeof(buf));
+
+    debug("current work dir is: %s", buf);
+             
 }
 
 void Config::parse_config(int argc, char* argv[]){
