@@ -1,3 +1,4 @@
 .vscode/settings.json
 log.log
 bin/server
+client/main.cpp

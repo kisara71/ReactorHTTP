@@ -17,6 +17,10 @@ SRCS = $(wildcard Channel/*.cpp) \
        $(wildcard Logger/*.cpp) \
        $(wildcard Server/*.cpp) \
        $(wildcard ThreadPool/*.cpp) \
+       $(wildcard TCPConnection/*.cpp)\
+       $(wildcard TCPServer/*.cpp)\
+       $(wildcard Buffer/*.cpp)\
+       $(wildcard HTTP/*.cpp)\
        main.cpp \
 
 # 目标文件
