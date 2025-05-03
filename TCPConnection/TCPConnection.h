@@ -4,7 +4,7 @@
 
 #include "../Buffer/Buffer.h"
 #include "../Channel/Channel.h"
-
+#include "../HTTP/HTTP.h"
 class TCPConnection
 {
 public:
@@ -12,19 +12,17 @@ public:
     ~TCPConnection();
 public:
     void handleRead();
-    void handleWrite();
 
     void bindDisconnect(handleFunc&& func);
-    
+    void bindModifyWrite(handleFunc&& func);
     handleFunc m_disconnect;
+    handleFunc m_modifyWrite;
 
 public:
-    Channel* m_channel;
-
-    int m_curReadByte;
     Buffer* m_readBuf;
-    Buffer* m_writeBuf;
-
+    HTTP* m_http;
+    Channel* m_channel;
+    int m_curReadByte;
 };
 
 

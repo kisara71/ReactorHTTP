@@ -1,19 +1,29 @@
 #include "TCPConnection.h"
 #include "../Logger/Logger.h"
 TCPConnection::TCPConnection(int fd, Events events):
-m_channel(new Channel(fd, events, this, nullptr, nullptr, [this](){delete this;}))
+m_readBuf(new Buffer(10240)),
+m_http(new HTTP(fd)),
+m_channel(new Channel(fd, events, this, nullptr, 
+    [this]()
+    {
+        m_http->handleResponse();
+        m_channel->setWriteEvent(false);
+        this->m_modifyWrite();
+    }, 
+    [this]()
+    {
+        delete this;
+    }))
 {
-    m_readBuf = new Buffer(10240);
-    m_writeBuf = new Buffer(10240);
+    
 }
 
 TCPConnection::~TCPConnection()
 {
     delete m_readBuf;
-    delete m_writeBuf;
-    if(m_channel!=nullptr){
-        delete m_channel;
-    }
+    delete m_channel;
+    delete m_http;
+
 }
 
 void TCPConnection::handleRead()
@@ -23,11 +33,23 @@ void TCPConnection::handleRead()
     if(m_curReadByte == 0)
     {
         m_disconnect();
+        return;
     }
+    m_http->handleRequest(m_readBuf);
+    m_readBuf->reset();
+
+    m_channel->setWriteEvent(true);
+    m_modifyWrite();
+
     return;
 }
 
 void TCPConnection::bindDisconnect(handleFunc&& func)
 {
     m_disconnect = std::move(func);
+}
+
+void TCPConnection::bindModifyWrite(handleFunc&& func)
+{
+    m_modifyWrite = std::move(func);
 }
