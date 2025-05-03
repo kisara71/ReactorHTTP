@@ -1,7 +1,6 @@
 #include <cstring>
 #include <sys/uio.h>
 #include <string.h>
-
 #include "../Logger/Logger.h"
 #include "Buffer.h"
 
@@ -79,13 +78,36 @@ int Buffer::readFromFD(int fd)
     {
         m_writeable -= ret;
         m_writePos += ret;
+        m_readable += ret;
+
         debug("read from fd: %d with %d byte", fd, ret);
         return ret;
     }else {
         m_writePos += ret;
         m_writeable -= ret;
+        m_readable = m_capacity;
         write(gourdBuf);
         debug(" write into buffer from gourdBuf");
         return ret;
     }
+}
+
+
+std::string_view Buffer::read() noexcept
+{
+    std::string_view sv(m_data + m_readPos, m_readable);
+    m_readable = 0;
+    m_writeable = m_capacity;
+    m_writePos = 0;
+    m_readPos = 0;
+    return sv;
+}
+
+void Buffer::reset() noexcept
+{
+    m_readable = 0;
+    m_writeable = m_capacity;
+    m_readPos = 0;
+    m_writePos = 0;
+    return;
 }
