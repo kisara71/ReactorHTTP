@@ -34,7 +34,7 @@ private:
     void parseContent(std::string_view r_content);
     void handleFile(const char* filename);
     void handleDir(const char*  dirname);
-    void handleHead();
+    void handleHead(std::string fileType);
 
 private:
     int m_fd;
