@@ -1,47 +1,32 @@
-CC = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -pthread -g
+# === 编译器 & 标志 ===
+CXX := g++
+CXXFLAGS := -Wall -Wextra -std=c++17 -O2 -g
+INCLUDES := -Iinclude
 
-# 文件夹路径
-OBJ_DIR = obj
-BIN_DIR = bin
-SRC_DIR = src
+# === 目录结构 ===
+SRC_DIR := src
+OBJ_DIR := build
+BIN_DIR := bin
+TARGET := $(BIN_DIR)/server
 
-# 源文件
-SRCS = $(wildcard Channel/*.cpp) \
-       $(wildcard Config/*.cpp) \
-       $(wildcard Dispatcher/EpollDispatcher/*.cpp) \
-       $(wildcard Dispatcher/PollDispatcher/*.cpp) \
-       $(wildcard Dispatcher/SelectDispatcher/*.cpp) \
-       $(wildcard EventLoop/*.cpp) \
-       $(wildcard HTTPRequest/*.cpp) \
-       $(wildcard Logger/*.cpp) \
-       $(wildcard Server/*.cpp) \
-       $(wildcard ThreadPool/*.cpp) \
-       $(wildcard TCPConnection/*.cpp)\
-       $(wildcard TCPServer/*.cpp)\
-       $(wildcard Buffer/*.cpp)\
-       $(wildcard HTTP/*.cpp)\
-       main.cpp \
+# === 查找所有源文件（递归）===
+SRCS := $(shell find $(SRC_DIR) -name "*.cpp")
+OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
-# 目标文件
-OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
-
-# 可执行文件
-TARGET = $(BIN_DIR)/server
-
-# 默认目标
+# === 默认目标 ===
 all: $(TARGET)
 
+# === 编译链接 ===
 $(TARGET): $(OBJS)
-	@mkdir -p $(BIN_DIR)  # 确保 bin 文件夹存在
-	$(CC) $(CXXFLAGS) -o $@ $^
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-# 编译源文件到目标文件
-$(OBJ_DIR)/%.o: %.cpp
+# === 编译规则 ===
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
-	$(CC) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# 清理目标
+# === 清理 ===
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
